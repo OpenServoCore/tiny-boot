@@ -16,6 +16,12 @@ REGION_ALIAS("REGION_BSS",    RAM);
 REGION_ALIAS("REGION_HEAP",   RAM);
 REGION_ALIAS("REGION_STACK",  RAM);
 
+SECTIONS {
+  .meta : {
+    KEEP(*(.meta))
+  } > META
+}
+
 # Used by bootloader to:
 # - know where the app is located in flash so it can jump to it after booting
 # - validate flash file size before writing to flash

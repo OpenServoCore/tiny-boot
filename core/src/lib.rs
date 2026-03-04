@@ -54,6 +54,13 @@ unsafe extern "C" {
     static __META_ADDR: u8;
 }
 
+#[used]
+#[unsafe(link_section = ".meta")]
+static META_BLANK: Meta = Meta {
+    magic: 0xFFFFFFFF,
+    checksum: 0xFFFFFFFF,
+};
+
 fn meta() -> &'static Meta {
     unsafe { &*(meta_addr() as *const Meta) }
 }
