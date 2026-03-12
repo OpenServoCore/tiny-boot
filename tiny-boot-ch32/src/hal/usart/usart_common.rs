@@ -1,7 +1,5 @@
 use ch32_metapac::usart::Usart;
 
-use super::Duplex;
-
 /// Configure USART registers: baud rate, 8N1, duplex mode, then enable.
 ///
 /// Follows the WCH SDK initialization order:
@@ -13,7 +11,7 @@ use super::Duplex;
 ///
 /// Caller must enable RCC clocks (USART + GPIO) and configure GPIO pins
 /// before calling this.
-pub(super) fn init(regs: &Usart, pclk: u32, baud: u32, duplex: &Duplex) {
+pub(crate) fn init(regs: &Usart, pclk: u32, baud: u32, half_duplex: bool) {
     // 1. Stop bits: 1 stop bit (STOP=0b00)
     regs.ctlr2().modify(|w| w.set_stop(0b00));
 
@@ -29,7 +27,7 @@ pub(super) fn init(regs: &Usart, pclk: u32, baud: u32, duplex: &Duplex) {
     regs.ctlr3().modify(|w| {
         w.set_rtse(false);
         w.set_ctse(false);
-        if matches!(duplex, Duplex::Half) {
+        if half_duplex {
             w.set_hdsel(true);
         }
     });
@@ -46,18 +44,18 @@ pub(super) fn init(regs: &Usart, pclk: u32, baud: u32, duplex: &Duplex) {
 }
 
 /// Block until a byte is received, then return it.
-pub(super) fn read_byte(regs: &Usart) -> u8 {
+pub(crate) fn read_byte(regs: &Usart) -> u8 {
     while !regs.statr().read().rxne() {}
     regs.datar().read().dr() as u8
 }
 
 /// Block until the TX data register is empty, then write a byte.
-pub(super) fn write_byte(regs: &Usart, byte: u8) {
+pub(crate) fn write_byte(regs: &Usart, byte: u8) {
     while !regs.statr().read().txe() {}
     regs.datar().write(|w| w.set_dr(byte as u16));
 }
 
 /// Block until the last transmission is fully complete (shift register empty).
-pub(super) fn flush(regs: &Usart) {
+pub(crate) fn flush(regs: &Usart) {
     while !regs.statr().read().tc() {}
 }

@@ -2,8 +2,7 @@ use core::convert::Infallible;
 
 use embedded_io::ErrorType;
 
-#[cfg_attr(usart_common, path = "usart_common.rs")]
-mod family;
+use crate::hal::usart;
 
 pub enum Duplex {
     /// Single-wire half-duplex. TX pin is shared for both transmit and receive
@@ -59,7 +58,8 @@ pub struct Usart {
 
 impl Usart {
     pub fn new(regs: ch32_metapac::usart::Usart, config: &UsartConfig) -> Self {
-        family::init(&regs, config.pclk, config.baud.value(), &config.duplex);
+        let half_duplex = matches!(config.duplex, Duplex::Half);
+        usart::init(&regs, config.pclk, config.baud.value(), half_duplex);
         Usart { regs }
     }
 }
@@ -73,7 +73,7 @@ impl embedded_io::Read for Usart {
         if buf.is_empty() {
             return Ok(0);
         }
-        buf[0] = family::read_byte(&self.regs);
+        buf[0] = usart::read_byte(&self.regs);
         Ok(1)
     }
 }
@@ -81,13 +81,13 @@ impl embedded_io::Read for Usart {
 impl embedded_io::Write for Usart {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
         for &byte in buf {
-            family::write_byte(&self.regs, byte);
+            usart::write_byte(&self.regs, byte);
         }
         Ok(buf.len())
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        family::flush(&self.regs);
+        usart::flush(&self.regs);
         Ok(())
     }
 }

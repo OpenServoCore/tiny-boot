@@ -1,27 +1,17 @@
-use tiny_boot::{hal::Abi as SBAbi, log_info};
+use tiny_boot::{traits::BootCtl as TBBootCtl, log_info};
 
-use crate::hal::common::*;
+use crate::common::*;
+use crate::hal::pfic;
 
-pub(crate) struct Abi;
+pub(crate) struct BootCtl;
 
-impl Abi {
+impl BootCtl {
     pub fn new() -> Self {
-        Abi {}
+        BootCtl {}
     }
 }
 
-impl SBAbi for Abi {
-    fn app_magic(&self) -> u32 {
-        unsafe { core::ptr::read_volatile(APP_PTR) }
-    }
-
-    fn app_flash_region(&self) -> (u32, u32) {
-        (
-            APP_BASE,
-            APP_BASE + APP_SIZE as u32,
-        )
-    }
-
+impl TBBootCtl for BootCtl {
     fn jump_to_app(&self) -> ! {
         log_info!("Booting Application...");
         let ep = entry_point();
@@ -30,7 +20,7 @@ impl SBAbi for Abi {
 
     fn system_reset(&mut self) -> ! {
         log_info!("Resetting...");
-        todo!()
+        pfic::system_reset(&ch32_metapac::PFIC);
     }
 }
 

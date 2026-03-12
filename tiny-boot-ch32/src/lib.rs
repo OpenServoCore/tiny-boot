@@ -1,14 +1,15 @@
 #![no_std]
 
-mod rt;
+pub(crate) mod common;
 pub(crate) mod hal;
+mod platform;
+mod rt;
 
-use tiny_boot::{Core, hal::Hal};
+use tiny_boot::{Core, traits::Platform};
 
-use hal::transport::usart::{BaudRate, Duplex, Usart, UsartConfig};
-use hal::{Abi, Flash, Registry};
+use platform::{BaudRate, BootCtl, BootStateStore, Duplex, Storage, Usart, UsartConfig};
 
-type Ch32Core = Core<Usart, Flash, Registry, Abi>;
+type Ch32Core = Core<Usart, Storage, BootStateStore, BootCtl>;
 
 pub struct Bootloader {
     core: Ch32Core,
@@ -24,11 +25,11 @@ impl Default for Bootloader {
             pclk: 8_000_000,
         };
         let transport = Usart::new(ch32_metapac::USART1, &config);
-        let flash = Flash::new(ch32_metapac::FLASH);
-        let abi = Abi::new();
-        let reg = Registry::new();
-        let hal = Hal::new(transport, flash, reg, abi);
-        let core = Core::new(hal);
+        let storage = Storage::new(ch32_metapac::FLASH);
+        let ctl = BootCtl::new();
+        let reg = BootStateStore::new(ch32_metapac::FLASH);
+        let platform = Platform::new(transport, storage, reg, ctl);
+        let core = Core::new(platform);
 
         Bootloader { core }
     }
