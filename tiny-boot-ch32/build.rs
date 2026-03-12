@@ -44,41 +44,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// the constants required for the chip.
 fn gen_constants(boot_pages: usize) -> String {
     let flash = FlashInfo::new(boot_pages);
+    let ram_base = METADATA
+        .memory
+        .iter()
+        .find(|r| r.kind == MemoryRegionKind::Ram)
+        .unwrap()
+        .address;
 
     format!(
         r#"
-/// Base address of the flash memory.
-pub(crate) const FLASH_BASE: u32 = {};
-
-/// Size of the flash memory in bytes.
-pub(crate) const FLASH_SIZE: usize = {};
-
 /// Size of a single write operation in bytes.
 pub(crate) const FLASH_WRITE_SIZE: usize = {};
 
 /// Size of a single erase operation in bytes.
 pub(crate) const FLASH_ERASE_SIZE: usize = {};
 
-/// Base address of the boot section.
-pub(crate) const BOOT_BASE: u32 = {};
-
-/// Size of the boot section in bytes.
-pub(crate) const BOOT_SIZE: usize = {};
-
 /// Base address of the application section.
 pub(crate) const APP_BASE: u32 = {};
 
-/// Size of the application section in bytes.
+/// Size of the application section in bytes (excludes meta region).
 pub(crate) const APP_SIZE: usize = {};
+
+/// Base address of the boot meta struct.
+pub(crate) const META_BASE: u32 = {};
+
+/// Base address of RAM.
+pub(crate) const RAM_BASE: u32 = {};
 "#,
-        flash.base,
-        flash.size,
         flash.write_size,
         flash.erase_size,
-        flash.sections.boot.base,
-        flash.sections.boot.size,
         flash.sections.app.base,
         flash.sections.app.size,
+        flash.sections.meta.base,
+        ram_base,
     )
 }
 
@@ -164,6 +162,7 @@ struct FlashInfo {
 struct Sections {
     boot: SectionInfo,
     app: SectionInfo,
+    meta: SectionInfo,
 }
 
 struct SectionInfo {
@@ -204,6 +203,11 @@ impl FlashInfo {
         let app_address = boot_address + boot_size as u32;
         let app_size = flash_size - boot_size;
 
+        // Boot meta struct is stored in the last FLASH_WRITE_SIZE bytes of
+        // the flash. The app linker script should reserve this space.
+        let meta_size = flash_write_size;
+        let meta_address = app_address + (app_size - meta_size) as u32;
+
         FlashInfo {
             base: flash_base,
             size: flash_size,
@@ -216,7 +220,11 @@ impl FlashInfo {
                 },
                 app: SectionInfo {
                     base: app_address,
-                    size: app_size,
+                    size: app_size - meta_size,
+                },
+                meta: SectionInfo {
+                    base: meta_address,
+                    size: meta_size,
                 },
             },
         }

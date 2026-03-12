@@ -37,6 +37,16 @@ SECTIONS
         *(.srodata .srodata.*);
     } > FLASH
 
+    /* --- Boot request word (shared with app) ---
+     *
+     * Reserved 4 bytes at the start of RAM for the RAM-based boot request.
+     * The app writes a magic value here and soft-resets to request bootloader entry.
+     * NOLOAD: not zeroed by startup asm, preserved across soft reset. */
+    .boot_request (NOLOAD) :
+    {
+        . += 4;
+    } > RAM
+
     /* --- Initialized mutable data (.data) ---
      *
      * This section has TWO addresses:
