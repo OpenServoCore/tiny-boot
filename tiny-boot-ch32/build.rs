@@ -29,11 +29,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    std::fs::copy("link.x", out.join("link.x"))?;
+
     println!("cargo:rustc-link-search={}", out.display());
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=link.x");
 
     Ok(())
 }
+
 
 /// Certain chip specific data are stored in ch32-metapac and we
 /// need to use them for constant generics. This function generates

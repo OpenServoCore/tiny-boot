@@ -11,6 +11,8 @@ embedded-hal = { workspace = true }
 embedded-io = { workspace = true }
 embedded-storage = { workspace = true }
 
+critical-section = { version = "1.2", optional = true }
+defmt = { version = "1.0", optional = true }
 tiny-boot = { path = "../tiny-boot" }
 
 [build-dependencies]
@@ -27,7 +29,7 @@ ch32v003f4p6 = ["ch32-metapac/ch32v003f4p6"]
 memory-x = []
 
 # logging
-defmt = ["tiny-boot/defmt"]
+defmt = ["dep:defmt", "dep:critical-section", "tiny-boot/defmt"]
 
 # boot behavior
 require-app = ["tiny-boot/require-app"]

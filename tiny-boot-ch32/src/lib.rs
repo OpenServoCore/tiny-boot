@@ -1,5 +1,6 @@
 #![no_std]
 
+mod rt;
 pub(crate) mod hal;
 
 use tiny_boot::{Core, hal::Hal};

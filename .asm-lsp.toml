@@ -1,0 +1,6 @@
+[default_config]
+assembler = "gas"
+instruction_set = "riscv"
+
+[default_config.opts]
+compiler = "riscv64-elf-gcc"
