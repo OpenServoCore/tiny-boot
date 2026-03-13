@@ -3,9 +3,6 @@ use tiny_boot::{traits::BootCtl as TBBootCtl, log_info};
 use crate::common::*;
 use crate::hal::pfic;
 
-const BOOT_REQUEST_PTR: *mut u32 = RAM_BASE as *mut u32;
-const BOOT_REQUEST_MAGIC: u32 = 0xB007_CAFE;
-
 pub(crate) struct BootCtl;
 
 impl BootCtl {

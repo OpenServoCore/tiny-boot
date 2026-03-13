@@ -11,7 +11,7 @@ embedded-hal = { workspace = true }
 embedded-io = { workspace = true }
 embedded-storage = { workspace = true }
 
-critical-section = { version = "1.2", optional = true }
+critical-section = "1.2"
 defmt = { version = "1.0", optional = true }
 tiny-boot = { path = "../tiny-boot" }
 
@@ -19,7 +19,7 @@ tiny-boot = { path = "../tiny-boot" }
 ch32-metapac = { version = "0.0.6", default-features = false, features = ["metadata"] }
 
 [features]
-default = ["ch32v003f4p6", "memory-x"]
+default = ["ch32v003f4p6", "memory-x", "bootloader"]
 
 # supported chip variants
 ch32v003f4p6 = ["ch32-metapac/ch32v003f4p6"]
@@ -29,7 +29,13 @@ ch32v003f4p6 = ["ch32-metapac/ch32v003f4p6"]
 memory-x = []
 
 # logging
-defmt = ["dep:defmt", "dep:critical-section", "tiny-boot/defmt"]
+defmt = ["dep:defmt", "tiny-boot/defmt"]
 
 # boot behavior
 require-app = ["tiny-boot/require-app"]
+
+# Build as bootloader binary (includes runtime assembly + Bootloader struct + link.x)
+bootloader = []
+
+# Build app-side boot client (includes BootClient impl + convenience functions)
+app = []

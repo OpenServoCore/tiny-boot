@@ -13,7 +13,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(feature = "memory-x")]
     {
-        let memory_x = gen_memory_x(BOOT_PAGES);
+        #[cfg(feature = "bootloader")]
+        let flash_alias = "BOOT";
+        #[cfg(all(feature = "app", not(feature = "bootloader")))]
+        let flash_alias = "APP";
+
+        let memory_x = gen_memory_x(BOOT_PAGES, flash_alias);
         File::create(out.join("memory.x"))?.write_all(memory_x.as_bytes())?;
     }
 
@@ -29,11 +34,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    std::fs::copy("link.x", out.join("link.x"))?;
+    #[cfg(feature = "bootloader")]
+    {
+        std::fs::copy("link-boot.x", out.join("link-boot.x"))?;
+        println!("cargo:rerun-if-changed=link-boot.x");
+    }
+
+    std::fs::copy("link-app.x", out.join("link-app.x"))?;
 
     println!("cargo:rustc-link-search={}", out.display());
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=link.x");
+    println!("cargo:rerun-if-changed=link-app.x");
 
     Ok(())
 }
@@ -51,40 +62,46 @@ fn gen_constants(boot_pages: usize) -> String {
         .unwrap()
         .address;
 
-    format!(
-        r#"
-/// Size of a single write operation in bytes.
-pub(crate) const FLASH_WRITE_SIZE: usize = {};
+    let mut s = String::new();
 
-/// Size of a single erase operation in bytes.
-pub(crate) const FLASH_ERASE_SIZE: usize = {};
+    // Constants needed by both boot and app
+    use std::fmt::Write;
+    writeln!(s, "/// Base address of the boot meta struct.").unwrap();
+    writeln!(s, "pub(crate) const META_BASE: u32 = {};", flash.sections.meta.base).unwrap();
+    writeln!(s).unwrap();
+    writeln!(s, "/// Base address of RAM.").unwrap();
+    writeln!(s, "pub(crate) const RAM_BASE: u32 = {};", ram_base).unwrap();
 
-/// Base address of the application section.
-pub(crate) const APP_BASE: u32 = {};
+    // Constants only needed by the bootloader
+    #[cfg(feature = "bootloader")]
+    {
+        writeln!(s).unwrap();
+        writeln!(s, "/// Size of a single write operation in bytes.").unwrap();
+        writeln!(s, "pub(crate) const FLASH_WRITE_SIZE: usize = {};", flash.write_size).unwrap();
+        writeln!(s).unwrap();
+        writeln!(s, "/// Size of a single erase operation in bytes.").unwrap();
+        writeln!(s, "pub(crate) const FLASH_ERASE_SIZE: usize = {};", flash.erase_size).unwrap();
+        writeln!(s).unwrap();
+        writeln!(s, "/// Base address of the application section.").unwrap();
+        writeln!(s, "pub(crate) const APP_BASE: u32 = {};", flash.sections.app.base).unwrap();
+        writeln!(s).unwrap();
+        writeln!(s, "/// Size of the application section in bytes (excludes meta region).").unwrap();
+        writeln!(s, "pub(crate) const APP_SIZE: usize = {};", flash.sections.app.size).unwrap();
+    }
 
-/// Size of the application section in bytes (excludes meta region).
-pub(crate) const APP_SIZE: usize = {};
-
-/// Base address of the boot meta struct.
-pub(crate) const META_BASE: u32 = {};
-
-/// Base address of RAM.
-pub(crate) const RAM_BASE: u32 = {};
-"#,
-        flash.write_size,
-        flash.erase_size,
-        flash.sections.app.base,
-        flash.sections.app.size,
-        flash.sections.meta.base,
-        ram_base,
-    )
+    s
 }
 
 /// Generate memory.x file for the given chip.
+///
+/// `flash_alias` controls which region FLASH is aliased to:
+/// - `"BOOT"` for bootloader binaries (flash starts at 0x0)
+/// - `"APP"` for application binaries (flash starts at APP_BASE)
+///
 /// stolen and modified from:
 ///   https://github.com/ch32-rs/ch32-data/blob/main/ch32-metapac-gen/src/lib.rs
 #[cfg(feature = "memory-x")]
-fn gen_memory_x(boot_pages: usize) -> String {
+fn gen_memory_x(boot_pages: usize, flash_alias: &str) -> String {
     let mut memory_x = String::new();
 
     let flash = FlashInfo::new(boot_pages);
@@ -134,10 +151,8 @@ fn gen_memory_x(boot_pages: usize) -> String {
     write!(
         memory_x,
         r#"
-# Change BOOT to APP in your application.
-REGION_ALIAS("FLASH", BOOT);
+REGION_ALIAS("FLASH", {flash_alias});
 
-# Defines the usual regions using FLASH
 REGION_ALIAS("REGION_TEXT", FLASH);
 REGION_ALIAS("REGION_RODATA", FLASH);
 REGION_ALIAS("REGION_DATA", RAM);
